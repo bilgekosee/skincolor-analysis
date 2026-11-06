@@ -200,8 +200,12 @@ const DRAPE_H = 600;
 // so drape colours can be shown as something the user is wearing.
 export async function buildDrape(canvas: HTMLCanvasElement, result: AnalysisResult): Promise<DrapeImage> {
   const box = result.faceBox;
+  const aspect = DRAPE_H / DRAPE_W;
+  // Fixed framing relative to the face, whatever the photo's size: the face
+  // always lands at the same size and place. Anything past the photo's edge is
+  // the same neutral grey as the removed background.
   const cropW = box.w * 2.3;
-  const cropH = cropW * (DRAPE_H / DRAPE_W);
+  const cropH = cropW * aspect;
   const left = box.x + box.w / 2 - cropW / 2;
   const top = box.y - box.h * 0.38;
   const s = DRAPE_W / cropW;
@@ -244,9 +248,14 @@ export async function buildDrape(canvas: HTMLCanvasElement, result: AnalysisResu
   // A round neckline below the chin with the neck showing, sloping down to
   // the shoulders, like a top worn for draping. It deliberately does not hug
   // the jaw: that hides the neck and looks cut out.
-  const neckY = Math.min(DRAPE_H - 40, chin.y + faceH * 0.17);
+  // Where the photo itself ends inside the crop. Tightly cropped portraits stop
+  // near the chin; the neckline then starts right at that edge and covers it.
+  const photoBottom = (canvas.height - top) * s;
+  const neckY = Math.min(chin.y + faceH * 0.17, photoBottom - faceH * 0.03);
   const neckHalf = faceW * 0.33;
-  const shoulderY = Math.min(DRAPE_H - 10, chin.y + faceH * 0.36);
+  // Shoulders keep their usual drop below the neckline, pulled up to the
+  // photo's edge when it ends early so the cut stays under the fabric.
+  const shoulderY = Math.min(chin.y + faceH * 0.36, Math.max(neckY + faceH * 0.12, photoBottom + faceH * 0.06));
   const cx = chin.x;
   const cape = [
     `M 0 ${f(shoulderY)}`,
